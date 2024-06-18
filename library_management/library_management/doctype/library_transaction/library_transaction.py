@@ -11,6 +11,7 @@ class LibraryTransaction(Document):
 	def before_submit(self):
 		if self.type == "Issue":
 			self.validate_issue()
+			self.validate_maximum_limit()
             # set the article status to be Issued 
 			article = frappe.get_doc("Article", self.article)
 			article.status = "Issued"
@@ -29,6 +30,16 @@ class LibraryTransaction(Document):
         # article cannot be issued if it is already issued
 		if article.status == "Issued":
 			frappe.throw("Article is already issued by another member")
+
+	def validate_maximum_limit(self):
+		max_articles = frappe.db.get_single_value("Library Settings", "maximum_articles")
+		count = frappe.db.count(
+            "Library Transaction",
+            {"library_member": self.library_member, "type": "Issue", "docstatus": DocStatus.submitted()},
+        )
+		if count >= max_articles:
+			frappe.throw("Maximum limit reached for issuing articles")
+
 	
 	def validate_return(self):
 		article = frappe.get_doc("Article", self.article)
